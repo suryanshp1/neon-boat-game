@@ -37,6 +37,7 @@ export class HudController {
 
   private onSelectBoat: (boatId: BoatId) => void;
   private onChangeWeather: (weather: WeatherState) => void;
+  private onCycleTime: () => void;
   private onToggleLights: () => void;
   private onRepairBoat: () => void;
   private onTriggerTouch: (throttle: number, steer: number, boost: boolean, drift: boolean) => void;
@@ -52,6 +53,7 @@ export class HudController {
     callbacks: {
       onSelectBoat: (boatId: BoatId) => void;
       onChangeWeather: (weather: WeatherState) => void;
+      onCycleTime?: () => void;
       onToggleLights: () => void;
       onRepairBoat: () => void;
       onTriggerTouch: (throttle: number, steer: number, boost: boolean, drift: boolean) => void;
@@ -63,6 +65,7 @@ export class HudController {
     this.telemetry = telemetry;
     this.onSelectBoat = callbacks.onSelectBoat;
     this.onChangeWeather = callbacks.onChangeWeather;
+    this.onCycleTime = callbacks.onCycleTime ?? (() => {});
     this.onToggleLights = callbacks.onToggleLights;
     this.onRepairBoat = callbacks.onRepairBoat;
     this.onTriggerTouch = callbacks.onTriggerTouch;
@@ -104,6 +107,7 @@ export class HudController {
         <div class="top-actions">
           <button class="neo-btn amber" id="btn-drawer-contracts">CONTRACTS [M]</button>
           <button class="neo-btn" id="btn-drawer-shipyard">MARINA & BOATS</button>
+          <button class="neo-btn" id="btn-time-cycle">TIME: GOLDEN DUSK</button>
           <button class="neo-btn" id="btn-weather-cycle">WEATHER: CLEAR</button>
           <button class="neo-btn" id="btn-lights-toggle">LIGHTS: ON [L]</button>
           <button class="neo-btn" id="btn-lang-toggle">日本語 / EN</button>
@@ -189,6 +193,9 @@ export class HudController {
     });
     document.getElementById('btn-lights-toggle')?.addEventListener('click', () => {
       this.onToggleLights();
+    });
+    document.getElementById('btn-time-cycle')?.addEventListener('click', () => {
+      this.onCycleTime();
     });
     document.getElementById('btn-lang-toggle')?.addEventListener('click', () => {
       this.locale = this.locale === 'en' ? 'ja' : 'en';
@@ -416,6 +423,17 @@ export class HudController {
     const weatherBtn = document.getElementById('btn-weather-cycle');
     if (weatherBtn) {
       weatherBtn.textContent = t(`hud.weather.${atmosState.weather}`, loc);
+    }
+
+    const timeBtn = document.getElementById('btn-time-cycle');
+    if (timeBtn) {
+      const phaseNames: Record<string, string> = {
+        morning_haze: 'TIME: MORNING',
+        clear_afternoon: 'TIME: DAYLIGHT',
+        golden_hour: 'TIME: NEON DUSK',
+        neon_night: 'TIME: MIDNIGHT',
+      };
+      timeBtn.textContent = phaseNames[atmosState.phase] ?? 'TIME: DUSK';
     }
 
     const lightsBtn = document.getElementById('btn-lights-toggle');

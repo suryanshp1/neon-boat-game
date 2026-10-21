@@ -90,15 +90,38 @@ async function bootNeonTides(): Promise<void> {
     renderManager.scene.add(obj);
   }
 
-  // Mission objective beacon ring mesh
-  const beaconGeo = new THREE.CylinderGeometry(14, 14, 28, 24, 1, true);
-  const beaconMat = new THREE.MeshBasicMaterial({
+  // Mission objective beacon ring + glowing sea surface marker
+  const beaconGroup = new THREE.Group();
+  const ringGeo = new THREE.TorusGeometry(13, 0.55, 12, 48);
+  ringGeo.rotateX(Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({
     color: 0xffae00,
-    wireframe: true,
     transparent: true,
-    opacity: 0.65,
+    opacity: 0.92,
   });
-  const missionBeaconMesh = new THREE.Mesh(beaconGeo, beaconMat);
+  const baseRingMesh = new THREE.Mesh(ringGeo, ringMat);
+  baseRingMesh.position.y = 0.5;
+  beaconGroup.add(baseRingMesh);
+
+  const upperRingMesh = new THREE.Mesh(
+    new THREE.TorusGeometry(9, 0.35, 10, 36).rotateX(Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0x00f2ff, transparent: true, opacity: 0.8 }),
+  );
+  upperRingMesh.position.y = 6.5;
+  beaconGroup.add(upperRingMesh);
+
+  const pillarGeo = new THREE.CylinderGeometry(0.45, 0.45, 36, 12, 1, true);
+  const pillarMat = new THREE.MeshBasicMaterial({
+    color: 0xffae00,
+    transparent: true,
+    opacity: 0.45,
+    side: THREE.DoubleSide,
+  });
+  const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+  pillarMesh.position.y = 18;
+  beaconGroup.add(pillarMesh);
+
+  const missionBeaconMesh = beaconGroup;
   missionBeaconMesh.visible = false;
   renderManager.scene.add(missionBeaconMesh);
 
@@ -161,6 +184,10 @@ async function bootNeonTides(): Promise<void> {
     onChangeWeather: (w) => {
       atmosphere.setWeather(w);
       audio.playChime(520);
+    },
+    onCycleTime: () => {
+      atmosphere.cycleTimePhase();
+      audio.playChime(600);
     },
     onToggleLights: () => {
       lightsOn = !lightsOn;
@@ -230,6 +257,7 @@ async function bootNeonTides(): Promise<void> {
     renderManager.scene.fog = new THREE.FogExp2(atmosState.fogColorHex, atmosState.fogDensity);
     renderManager.sunLight.intensity = atmosState.sunIntensity;
     renderManager.sunLight.color.setHex(atmosState.sunColorHex);
+    renderManager.ambientLight.intensity = atmosState.ambientIntensity;
 
     streamer.update(
       { x: boatState.position.x, z: boatState.position.z },
@@ -280,7 +308,7 @@ async function bootNeonTides(): Promise<void> {
       missionBeaconMesh.visible = true;
       missionBeaconMesh.position.set(
         activeMission.currentStage.targetPos.x,
-        10,
+        0,
         activeMission.currentStage.targetPos.z,
       );
       missionBeaconMesh.rotation.y = simTime * 1.2;

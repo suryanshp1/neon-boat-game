@@ -12,15 +12,17 @@ describe('Subsystem 1: sandraschi/blender-mcp Asset Factory', () => {
     expect(manifest.assets.length).toBeGreaterThanOrEqual(10);
   });
 
-  it('generates valid GLB files via blender-mcp within triangle and material budgets', () => {
+  it('generates detailed GLB files via blender-mcp within triangle and material budgets', () => {
     expect(fs.existsSync(reportPath)).toBe(true);
     const report = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
     expect(report.passed).toBe(true);
     expect(report.generator).toContain('sandraschi/blender-mcp');
     for (const item of report.results) {
       expect(item.exists).toBe(true);
-      expect(item.triangles).toBeGreaterThan(0);
+      const minExpected = item.asset_id === 'buoy_marker' ? 250 : 600;
+      expect(item.triangles).toBeGreaterThanOrEqual(minExpected);
       expect(item.triangles).toBeLessThanOrEqual(item.maxTriangles);
+      expect(item.materials).toBeGreaterThanOrEqual(3);
       expect(item.materials).toBeLessThanOrEqual(item.maxMaterials);
     }
   });

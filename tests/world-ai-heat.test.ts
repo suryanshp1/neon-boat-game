@@ -1,10 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { WorldStreamer } from '../src/world/WorldStreamer';
+import { AtmosphereSystem } from '../src/world/AtmosphereSystem';
 import { StealthSystem } from '../src/gameplay/StealthSystem';
 import { EnforcementSystem } from '../src/ai/EnforcementSystem';
 import { TrafficManager } from '../src/ai/TrafficManager';
 
 describe('Subsystem 3: World Streaming, Traffic AI, Harbour Heat & Stealth', () => {
+  it('maintains high-visibility lighting intensities across all 4 day/night phases', () => {
+    const atmos = new AtmosphereSystem();
+    for (const hour of [8, 14, 18, 22]) {
+      atmos.setHour(hour);
+      const state = atmos.getState();
+      expect(state.sunIntensity).toBeGreaterThanOrEqual(1.1);
+      expect(state.fogDensity).toBeLessThanOrEqual(0.0012);
+    }
+  });
   it('streams 250m cells with velocity lookahead and cleanly disposes unloaded cells without leaks', () => {
     const streamer = new WorldStreamer();
     streamer.update({ x: 0, z: 0 }, { x: 0, z: 20 });
