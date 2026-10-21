@@ -170,8 +170,13 @@ export class WorldStreamer {
       const wx = cellCenterX + ox;
       const wz = cellCenterZ + oz;
 
-      // Leave central channels open for high-speed boating
-      if (Math.hypot(wx, wz) < 95 || Math.abs(wx) < 42 || Math.abs(wz) < 42) {
+      // Leave central channels and Mirai Home Marina basin (-60, -60) open for high-speed boating
+      if (
+        Math.hypot(wx, wz) < 105 ||
+        Math.hypot(wx + 65, wz + 65) < 72 ||
+        Math.abs(wx) < 42 ||
+        Math.abs(wz) < 42
+      ) {
         continue;
       }
 

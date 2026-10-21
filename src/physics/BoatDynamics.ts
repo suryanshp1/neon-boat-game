@@ -87,9 +87,9 @@ export class BoatDynamics {
   }
 
   private rebuildPontoons(): void {
-    const hw = this.spec.width * 0.42;
-    const hl = this.spec.length * 0.42;
-    const bottomY = -0.25;
+    const hw = this.spec.width * 0.44;
+    const hl = this.spec.length * 0.44;
+    const bottomY = -0.45;
     // 8 hull buoyancy sample points: bow L/R, mid-fore L/R, mid-aft L/R, stern L/R
     this.pontoons = [
       { ox: -hw * 0.65, oy: bottomY, oz: -hl },
@@ -117,6 +117,47 @@ export class BoatDynamics {
 
   public applyDamage(amount: number): void {
     this.hullHp = Math.max(10, this.hullHp - amount);
+  }
+
+  public resolveCircleCollision(obsX: number, obsZ: number, obsRadius: number): number {
+    const pos = this.body.translation();
+    const vel = this.body.linvel();
+    const boatRadius = Math.max(1.4, this.spec.width * 0.65);
+    const minDist = obsRadius + boatRadius;
+    const dx = pos.x - obsX;
+    const dz = pos.z - obsZ;
+    const dist = Math.hypot(dx, dz);
+
+    if (dist >= minDist) return 0;
+
+    const nx = dist > 1e-4 ? dx / dist : 0;
+    const nz = dist > 1e-4 ? dz / dist : 1;
+    const penetration = minDist - dist;
+
+    this.body.setTranslation(
+      {
+        x: pos.x + nx * (penetration + 0.08),
+        y: pos.y,
+        z: pos.z + nz * (penetration + 0.08),
+      },
+      true,
+    );
+
+    const inwardSpeed = -(vel.x * nx + vel.z * nz);
+    const impactSpeed = Math.max(1.5, inwardSpeed);
+    if (inwardSpeed > 0) {
+      const restitution = 0.42;
+      const bounceVx = vel.x + (1 + restitution) * inwardSpeed * nx;
+      const bounceVz = vel.z + (1 + restitution) * inwardSpeed * nz;
+      this.body.setLinvel({ x: bounceVx * 0.78, y: vel.y, z: bounceVz * 0.78 }, true);
+    }
+
+    if (impactSpeed > 2.2) {
+      const dmg = Math.max(1, Math.round((impactSpeed - 1.8) * 1.6));
+      this.applyDamage(dmg);
+    }
+
+    return impactSpeed;
   }
 
   public setTransform(pos: { x: number; y: number; z: number }, yawRad = 0): void {
@@ -231,7 +272,7 @@ export class BoatDynamics {
       true,
     );
 
-    // 3. Steering yaw torque & self-righting roll/pitch stabilization
+    // 3. Steering yaw torque & vector cross-product self-righting stabilization
     const steerAuthority = 0.35 + 0.65 * Math.min(1.0, Math.abs(forwardSpeed) / 6.0);
     const driftTurnBoost = input.drift ? 1.32 : 1.0;
     const yawTorque =
@@ -242,22 +283,46 @@ export class BoatDynamics {
       damageFactor *
       (rawThrottle < -0.05 ? -1 : 1);
 
-    // Self-righting torque keeps boat upright while allowing dynamic banking into turns
-    const targetBankRoll = input.steer * Math.min(0.28, Math.abs(forwardSpeed) * 0.012);
-    const currentRoll = right.y;
-    const currentPitch = forward.y;
+    // Dynamic carving bank into turns + hydro-planing bow rise under forward thrust
+    const targetBankRoll = -input.steer * Math.min(0.22, Math.abs(forwardSpeed) * 0.0085);
+    const targetBowPitch = Math.max(-0.04, Math.min(0.09, forwardSpeed * 0.003));
+    const rawTargetUp = {
+      x: horizRight.x * targetBankRoll - horizForward.x * targetBowPitch,
+      y: 1.0,
+      z: horizRight.z * targetBankRoll - horizForward.z * targetBowPitch,
+    };
+    const tLen = Math.hypot(rawTargetUp.x, rawTargetUp.y, rawTargetUp.z);
+    const targetUp = {
+      x: rawTargetUp.x / tLen,
+      y: rawTargetUp.y / tLen,
+      z: rawTargetUp.z / tLen,
+    };
 
-    const rollRestoreTorque = (targetBankRoll - currentRoll) * this.spec.stabilityRollRestore;
-    const pitchRestoreTorque = -currentPitch * this.spec.stabilityRollRestore * 1.15;
+    // Exact 3D righting torque axis: up × targetUp
+    const crossX = up.y * targetUp.z - up.z * targetUp.y;
+    const crossY = up.z * targetUp.x - up.x * targetUp.z;
+    const crossZ = up.x * targetUp.y - up.y * targetUp.x;
+    const restoreStiffness = this.spec.stabilityRollRestore * 3.2;
+    const angDamp = this.spec.massKg * 5.2;
 
     this.body.addTorque(
       {
-        x: horizRight.x * pitchRestoreTorque + horizForward.x * rollRestoreTorque,
-        y: yawTorque - angvel.y * this.spec.massKg * 1.8,
-        z: horizRight.z * pitchRestoreTorque + horizForward.z * rollRestoreTorque,
+        x: crossX * restoreStiffness - angvel.x * angDamp,
+        y: yawTorque + crossY * restoreStiffness - angvel.y * this.spec.massKg * 2.2,
+        z: crossZ * restoreStiffness - angvel.z * angDamp,
       },
       true,
     );
+
+    // Defense-in-depth waterline floor guard so hull never dips beneath opaque water surface
+    const centerWater = WaterField.sample(pos.x, pos.z, time, weather);
+    const minHullY = centerWater.height + 0.08;
+    if (pos.y < minHullY) {
+      this.body.setTranslation({ x: pos.x, y: minHullY, z: pos.z }, true);
+      if (linvel.y < 0) {
+        this.body.setLinvel({ x: linvel.x, y: linvel.y * 0.2, z: linvel.z }, true);
+      }
+    }
 
     return this.getState();
   }

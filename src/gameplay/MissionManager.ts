@@ -11,15 +11,28 @@ export interface ActiveMissionState {
   stageRemainingSec: number | null;
 }
 
+export interface MissionLifecycleCallbacks {
+  onMissionStart?: (mission: MissionSpec) => void;
+  onStageComplete?: (mission: MissionSpec, completedStageIndex: number) => void;
+  onMissionComplete?: (mission: MissionSpec) => void;
+  onMissionFail?: (mission: MissionSpec, reason: string) => void;
+}
+
 export class MissionManager {
   private economy: EconomyManager;
   private telemetry: TelemetryTracker;
+  private callbacks?: MissionLifecycleCallbacks;
   private active: ActiveMissionState | null = null;
   private completedMissionIds = new Set<string>();
 
-  constructor(economy: EconomyManager, telemetry: TelemetryTracker) {
+  constructor(
+    economy: EconomyManager,
+    telemetry: TelemetryTracker,
+    callbacks?: MissionLifecycleCallbacks,
+  ) {
     this.economy = economy;
     this.telemetry = telemetry;
+    this.callbacks = callbacks;
   }
 
   public getAvailableMissions(): MissionSpec[] {
@@ -46,6 +59,7 @@ export class MissionManager {
       stageRemainingSec: spec.stages[0].timeLimitSec ?? null,
     };
     this.telemetry.track('mission_start', { missionId: spec.id, district: spec.district });
+    this.callbacks?.onMissionStart?.(spec);
     return true;
   }
 
@@ -61,9 +75,11 @@ export class MissionManager {
 
   public completeCurrentStage(): void {
     if (!this.active) return;
-    const nextIdx = this.active.stageIndex + 1;
-    if (nextIdx >= this.active.mission.stages.length) {
-      const m = this.active.mission;
+    const m = this.active.mission;
+    const completedIdx = this.active.stageIndex;
+    const nextIdx = completedIdx + 1;
+    this.callbacks?.onStageComplete?.(m, completedIdx);
+    if (nextIdx >= m.stages.length) {
       this.completedMissionIds.add(m.id);
       this.economy.grantCredits(m.rewardCredits, 'mission_reward');
       this.economy.addReputation(m.rewardReputation);
@@ -73,8 +89,9 @@ export class MissionManager {
         elapsedSec: Number(this.active.elapsedSec.toFixed(1)),
       });
       this.active = null;
+      this.callbacks?.onMissionComplete?.(m);
     } else {
-      const nextStage = this.active.mission.stages[nextIdx];
+      const nextStage = m.stages[nextIdx];
       this.active.stageIndex = nextIdx;
       this.active.currentStage = nextStage;
       this.active.stageRemainingSec = nextStage.timeLimitSec ?? null;
@@ -93,11 +110,13 @@ export class MissionManager {
     if (this.active.stageRemainingSec !== null) {
       this.active.stageRemainingSec -= dt;
       if (this.active.stageRemainingSec <= 0) {
+        const failedMission = this.active.mission;
         this.telemetry.track('mission_fail', {
-          missionId: this.active.mission.id,
+          missionId: failedMission.id,
           reason: 'timeout',
         });
         this.active = null;
+        this.callbacks?.onMissionFail?.(failedMission, 'timeout');
         return null;
       }
     }

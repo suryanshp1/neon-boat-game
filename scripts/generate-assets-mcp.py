@@ -95,37 +95,38 @@ def add_cylinder(name, location, radius, depth, mat, rotation=(0, 0, 0), vertice
     return obj
 
 def build_ribbed_hull(name, length, width, height, mat_hull, mat_deck, mat_neon, mat_accent):
-    """Creates a multi-section V-chine boat hull with flared bow, recessed deck, chine rails, and neon strips."""
+    """Creates a multi-section V-chine boat hull with flared bow, high visible freeboard, recessed deck, chine rails, and neon strips."""
     mesh = bpy.data.meshes.new(name + "_HullMesh")
     obj = bpy.data.objects.new(name + "_Hull", mesh)
     bpy.context.collection.objects.link(obj)
 
     bm = bmesh.new()
     # Build 8 longitudinal cross-sections from stern (-L/2) to pointed bow (+L/2)
+    # Pivot is at waterline; hull extends from -0.22*H (keel) up to +0.72*H (sheer gunwale) so hull is unmistakably visible above water
     stations = [
-        (-0.50, 0.82, 0.55, 0.00),
-        (-0.35, 0.96, 0.85, -0.02),
-        (-0.15, 1.00, 1.00, -0.05),
-        (0.05,  1.00, 1.00, -0.05),
-        (0.22,  0.88, 0.95, 0.00),
-        (0.36,  0.62, 0.82, 0.06),
-        (0.46,  0.28, 0.55, 0.16),
-        (0.50,  0.04, 0.20, 0.28),
+        (-0.50, 0.84, 0.55, 0.04),
+        (-0.35, 0.96, 0.85, 0.02),
+        (-0.15, 1.00, 1.00, 0.00),
+        (0.05,  1.00, 1.00, 0.02),
+        (0.22,  0.88, 0.95, 0.06),
+        (0.36,  0.64, 0.82, 0.12),
+        (0.46,  0.30, 0.55, 0.22),
+        (0.50,  0.05, 0.22, 0.32),
     ]
     ring_verts = []
     for frac_y, w_scale, keel_scale, sheer_lift in stations:
         y = frac_y * length
         hw = (width * 0.5) * w_scale
-        keel_z = -height * 0.42 * keel_scale + sheer_lift * height
-        chine_z = -height * 0.14 * keel_scale + sheer_lift * height
-        gunwale_z = height * 0.42 + sheer_lift * height
+        keel_z = -height * 0.20 * keel_scale + sheer_lift * height
+        chine_z = height * 0.14 * keel_scale + sheer_lift * height
+        gunwale_z = height * 0.68 + sheer_lift * height
 
         # 6 vertices per cross section: KeelBottomL, ChineL, GunwaleL, GunwaleR, ChineR, KeelBottomR
         v0 = bm.verts.new((-hw * 0.18, y, keel_z))
-        v1 = bm.verts.new((-hw * 0.92, y, chine_z))
+        v1 = bm.verts.new((-hw * 0.94, y, chine_z))
         v2 = bm.verts.new((-hw, y, gunwale_z))
         v3 = bm.verts.new((hw, y, gunwale_z))
-        v4 = bm.verts.new((hw * 0.92, y, chine_z))
+        v4 = bm.verts.new((hw * 0.94, y, chine_z))
         v5 = bm.verts.new((hw * 0.18, y, keel_z))
         ring_verts.append([v0, v1, v2, v3, v4, v5])
 
@@ -153,16 +154,19 @@ def build_ribbed_hull(name, length, width, height, mat_hull, mat_deck, mat_neon,
     sub.levels = 1
     obj.data.materials.append(mat_hull)
 
-    # Port & Starboard luminous neon waterline rub-rails
-    add_box(name + "_NeonRailL", (-width * 0.49, -length * 0.04, height * 0.25), (0.09, length * 0.76, 0.09), mat_neon, bevel_width=0.015)
-    add_box(name + "_NeonRailR", (width * 0.49, -length * 0.04, height * 0.25), (0.09, length * 0.76, 0.09), mat_neon, bevel_width=0.015)
+    # Port & Starboard luminous neon chine rub-rails + upper gunwale trim
+    add_box(name + "_NeonRailL", (-width * 0.50, -length * 0.03, height * 0.52), (0.11, length * 0.78, 0.11), mat_neon, bevel_width=0.015)
+    add_box(name + "_NeonRailR", (width * 0.50, -length * 0.03, height * 0.52), (0.11, length * 0.78, 0.11), mat_neon, bevel_width=0.015)
+    add_box(name + "_GunwaleTrimL", (-width * 0.47, -length * 0.02, height * 0.70), (0.12, length * 0.76, 0.08), mat_accent, bevel_width=0.015)
+    add_box(name + "_GunwaleTrimR", (width * 0.47, -length * 0.02, height * 0.70), (0.12, length * 0.76, 0.08), mat_accent, bevel_width=0.015)
 
-    # Non-slip recessed floor deck
-    add_box(name + "_MainDeck", (0, -length * 0.03, height * 0.36), (width * 0.82, length * 0.78, 0.12), mat_deck, bevel_width=0.02)
+    # Non-slip recessed floor deck + foredeck peak
+    add_box(name + "_MainDeck", (0, -length * 0.04, height * 0.58), (width * 0.84, length * 0.78, 0.14), mat_deck, bevel_width=0.02)
+    add_box(name + "_ForeDeck", (0, length * 0.30, height * 0.74), (width * 0.56, length * 0.26, 0.12), mat_hull, bevel_width=0.03)
 
     # Bow cleat & navigation light mast
-    add_cylinder(name + "_BowCleat", (0, length * 0.38, height * 0.56), 0.12, 0.25, mat_accent, vertices=16)
-    add_box(name + "_BowLight", (0, length * 0.43, height * 0.54), (0.36, 0.22, 0.14), mat_neon, bevel_width=0.02)
+    add_cylinder(name + "_BowCleat", (0, length * 0.39, height * 0.86), 0.12, 0.25, mat_accent, vertices=16)
+    add_box(name + "_BowLight", (0, length * 0.44, height * 0.84), (0.38, 0.24, 0.15), mat_neon, bevel_width=0.02)
 
 def build_asset(asset_spec):
     reset_scene()
@@ -170,112 +174,127 @@ def build_asset(asset_spec):
     L, W, H = asset_spec["world_scale_m"]
 
     if aid == "boat_skiff":
-        hull = make_pbr_material("SkiffHull", (0.14, 0.28, 0.44), metallic=0.35, roughness=0.28)
-        deck = make_pbr_material("SkiffDeck", (0.86, 0.90, 0.94), metallic=0.15, roughness=0.42)
-        neon = make_pbr_material("SkiffNeon", (0.0, 0.96, 1.0), metallic=0.1, roughness=0.15, emission_color=(0.0, 0.96, 1.0), emission_strength=6.0)
-        accent = make_pbr_material("SkiffAccent", (0.95, 0.55, 0.08), metallic=0.45, roughness=0.3)
+        hull = make_pbr_material("SkiffHull", (0.06, 0.10, 0.18), metallic=0.55, roughness=0.24)
+        deck = make_pbr_material("SkiffDeck", (0.22, 0.27, 0.35), metallic=0.22, roughness=0.42)
+        neon = make_pbr_material("SkiffNeon", (0.0, 0.92, 1.0), metallic=0.1, roughness=0.2, emission_color=(0.0, 0.92, 1.0), emission_strength=2.2)
+        accent = make_pbr_material("SkiffAccent", (0.98, 0.36, 0.06), metallic=0.42, roughness=0.28)
 
-        build_ribbed_hull("Skiff", L, W, H * 0.65, hull, deck, neon, accent)
-        # Center helm console & windshield
-        add_box("HelmConsole", (0, -L * 0.06, H * 0.68), (W * 0.48, L * 0.24, H * 0.46), deck, bevel_width=0.04)
-        add_box("Windshield", (0, L * 0.04, H * 0.95), (W * 0.44, 0.08, H * 0.32), neon, bevel_width=0.01, rotation=(-0.35, 0, 0))
-        # Radar T-Top arch
-        add_cylinder("ArchPostL", (-W * 0.32, -L * 0.12, H * 0.88), 0.06, H * 0.85, accent, vertices=14)
-        add_cylinder("ArchPostR", (W * 0.32, -L * 0.12, H * 0.88), 0.06, H * 0.85, accent, vertices=14)
-        add_box("RadarCanopy", (0, -L * 0.10, H * 1.28), (W * 0.72, L * 0.28, 0.09), deck, bevel_width=0.02)
-        # Outboard motor cowling & prop shaft
-        add_box("OutboardCowl", (0, -L * 0.52, H * 0.42), (0.48, 0.62, 0.68), hull, bevel_width=0.06)
-        add_box("OutboardNeon", (0, -L * 0.55, H * 0.48), (0.50, 0.20, 0.14), neon, bevel_width=0.02)
+        build_ribbed_hull("Skiff", L, W, H * 0.72, hull, deck, neon, accent)
+        # Center helm console, glowing dashboard & dark smoked sport windshield
+        add_box("HelmConsole", (0, 0.02 * L, H * 0.76), (W * 0.46, L * 0.22, H * 0.44), hull, bevel_width=0.04)
+        add_box("HelmScreen", (0, -0.06 * L, H * 0.92), (W * 0.32, 0.10, H * 0.14), neon, bevel_width=0.015, rotation=(0.35, 0, 0))
+        add_box("Windshield", (0, 0.10 * L, H * 1.05), (W * 0.44, 0.08, H * 0.30), deck, bevel_width=0.015, rotation=(-0.38, 0, 0))
+        # Pilot bolster seat & forward bench
+        add_box("PilotSeatBase", (0, -0.18 * L, H * 0.66), (W * 0.42, L * 0.12, H * 0.26), accent, bevel_width=0.03)
+        add_box("PilotSeatBack", (0, -0.23 * L, H * 0.82), (W * 0.42, 0.12, H * 0.24), accent, bevel_width=0.03)
+        # Sleek swept-back sport radar arch (leaves cockpit & deck unobstructed from chase camera)
+        add_cylinder("ArchPostL", (-W * 0.38, -L * 0.22, H * 0.92), 0.06, H * 0.72, accent, rotation=(-0.28, 0, 0), vertices=12)
+        add_cylinder("ArchPostR", (W * 0.38, -L * 0.22, H * 0.92), 0.06, H * 0.72, accent, rotation=(-0.28, 0, 0), vertices=12)
+        add_box("RadarArchBar", (0, -L * 0.27, H * 1.24), (W * 0.80, 0.24, 0.08), accent, bevel_width=0.02)
+        add_cylinder("RadarScannerDome", (0, -L * 0.27, H * 1.32), 0.24, 0.12, deck, vertices=16)
+        # Twin Outboard motors & glowing plasma trim
+        for sx, tag in [(-0.22, "L"), (0.22, "R")]:
+            add_box(f"OutboardCowl_{tag}", (W * sx, -L * 0.51, H * 0.56), (0.36, 0.58, 0.62), hull, bevel_width=0.05)
+            add_box(f"OutboardNeon_{tag}", (W * sx, -L * 0.54, H * 0.62), (0.38, 0.20, 0.14), neon, bevel_width=0.02)
 
     elif aid == "boat_speedboat":
-        hull = make_pbr_material("SpeedHull", (0.12, 0.16, 0.26), metallic=0.65, roughness=0.18)
-        canopy = make_pbr_material("SpeedCanopy", (0.78, 0.86, 0.96), metallic=0.45, roughness=0.15)
-        neon = make_pbr_material("SpeedNeon", (1.0, 0.14, 0.58), metallic=0.15, roughness=0.18, emission_color=(1.0, 0.14, 0.58), emission_strength=7.0)
-        cyan = make_pbr_material("SpeedCyan", (0.0, 0.95, 1.0), metallic=0.15, roughness=0.18, emission_color=(0.0, 0.95, 1.0), emission_strength=6.5)
+        hull = make_pbr_material("SpeedHull", (0.07, 0.09, 0.16), metallic=0.68, roughness=0.20)
+        canopy = make_pbr_material("SpeedCanopy", (0.18, 0.24, 0.34), metallic=0.55, roughness=0.18)
+        neon = make_pbr_material("SpeedNeon", (1.0, 0.14, 0.58), metallic=0.15, roughness=0.22, emission_color=(1.0, 0.14, 0.58), emission_strength=2.5)
+        cyan = make_pbr_material("SpeedCyan", (0.0, 0.95, 1.0), metallic=0.15, roughness=0.22, emission_color=(0.0, 0.95, 1.0), emission_strength=2.4)
 
-        build_ribbed_hull("Speedboat", L, W, H * 0.58, hull, canopy, neon, cyan)
+        build_ribbed_hull("Speedboat", L, W, H * 0.68, hull, canopy, neon, cyan)
         # Sleek fighter cockpit canopy
-        add_box("CockpitCowling", (0, -L * 0.02, H * 0.58), (W * 0.62, L * 0.48, H * 0.38), canopy, bevel_width=0.08, bevel_segments=3)
-        add_box("CanopyGlass", (0, L * 0.06, H * 0.72), (W * 0.52, L * 0.32, H * 0.24), cyan, bevel_width=0.06, bevel_segments=3)
+        add_box("CockpitCowling", (0, -L * 0.02, H * 0.72), (W * 0.62, L * 0.48, H * 0.36), canopy, bevel_width=0.08, bevel_segments=3)
+        add_box("CanopyGlass", (0, L * 0.06, H * 0.86), (W * 0.52, L * 0.32, H * 0.24), hull, bevel_width=0.06, bevel_segments=3)
         # Twin hydro-stabilizer spoilers
-        add_box("WingStrutL", (-W * 0.36, -L * 0.38, H * 0.64), (0.10, 0.42, H * 0.42), hull, bevel_width=0.02, rotation=(0.25, 0, 0))
-        add_box("WingStrutR", (W * 0.36, -L * 0.38, H * 0.64), (0.10, 0.42, H * 0.42), hull, bevel_width=0.02, rotation=(0.25, 0, 0))
-        add_box("AeroFoilWing", (0, -L * 0.42, H * 0.88), (W * 0.98, 0.55, 0.12), neon, bevel_width=0.03)
+        add_box("WingStrutL", (-W * 0.36, -L * 0.38, H * 0.78), (0.10, 0.42, H * 0.42), hull, bevel_width=0.02, rotation=(0.25, 0, 0))
+        add_box("WingStrutR", (W * 0.36, -L * 0.38, H * 0.78), (0.10, 0.42, H * 0.42), hull, bevel_width=0.02, rotation=(0.25, 0, 0))
+        add_box("AeroFoilWing", (0, -L * 0.42, H * 1.02), (W * 0.98, 0.55, 0.12), neon, bevel_width=0.03)
         # Twin jet thruster nozzles
-        add_cylinder("JetNozzleL", (-W * 0.24, -L * 0.52, H * 0.12), 0.22, 0.65, cyan, rotation=(1.5708, 0, 0), vertices=18)
-        add_cylinder("JetNozzleR", (W * 0.24, -L * 0.52, H * 0.12), 0.22, 0.65, cyan, rotation=(1.5708, 0, 0), vertices=18)
+        add_cylinder("JetNozzleL", (-W * 0.24, -L * 0.52, H * 0.38), 0.24, 0.68, cyan, rotation=(1.5708, 0, 0), vertices=18)
+        add_cylinder("JetNozzleR", (W * 0.24, -L * 0.52, H * 0.38), 0.24, 0.68, cyan, rotation=(1.5708, 0, 0), vertices=18)
 
     elif aid == "boat_workboat":
-        hull = make_pbr_material("WorkHull", (0.90, 0.44, 0.08), metallic=0.32, roughness=0.38)
-        cabin = make_pbr_material("WorkCabin", (0.82, 0.86, 0.90), metallic=0.25, roughness=0.40)
-        beacon = make_pbr_material("WorkBeacon", (1.0, 0.72, 0.05), metallic=0.1, roughness=0.2, emission_color=(1.0, 0.72, 0.05), emission_strength=6.5)
-        steel = make_pbr_material("WorkSteel", (0.22, 0.28, 0.36), metallic=0.55, roughness=0.35)
+        hull = make_pbr_material("WorkHull", (0.78, 0.34, 0.06), metallic=0.38, roughness=0.34)
+        cabin = make_pbr_material("WorkCabin", (0.26, 0.32, 0.40), metallic=0.30, roughness=0.38)
+        beacon = make_pbr_material("WorkBeacon", (1.0, 0.72, 0.06), metallic=0.1, roughness=0.2, emission_color=(1.0, 0.72, 0.06), emission_strength=2.4)
+        steel = make_pbr_material("WorkSteel", (0.14, 0.18, 0.24), metallic=0.58, roughness=0.32)
 
-        build_ribbed_hull("Workboat", L, W, H * 0.48, hull, steel, beacon, cabin)
+        build_ribbed_hull("Workboat", L, W, H * 0.54, hull, steel, beacon, cabin)
         # Forward wheelhouse bridge + illuminated windows
-        add_box("Wheelhouse", (0, L * 0.10, H * 0.68), (W * 0.66, L * 0.30, H * 0.52), cabin, bevel_width=0.05)
-        add_box("BridgeWindows", (0, L * 0.14, H * 0.82), (W * 0.69, L * 0.22, H * 0.18), beacon, bevel_width=0.02)
+        add_box("Wheelhouse", (0, L * 0.12, H * 0.76), (W * 0.66, L * 0.30, H * 0.52), cabin, bevel_width=0.05)
+        add_box("BridgeWindows", (0, L * 0.16, H * 0.90), (W * 0.69, L * 0.22, H * 0.18), beacon, bevel_width=0.02)
         # Heavy salvage A-frame crane at stern
-        add_cylinder("CraneBoomL", (-W * 0.32, -L * 0.30, H * 0.78), 0.12, H * 0.82, steel, rotation=(-0.35, 0, 0), vertices=16)
-        add_cylinder("CraneBoomR", (W * 0.32, -L * 0.30, H * 0.78), 0.12, H * 0.82, steel, rotation=(-0.35, 0, 0), vertices=16)
-        add_box("CraneCrossBeam", (0, -L * 0.42, H * 1.12), (W * 0.76, 0.26, 0.26), beacon, bevel_width=0.03)
+        add_cylinder("CraneBoomL", (-W * 0.32, -L * 0.30, H * 0.86), 0.12, H * 0.82, steel, rotation=(-0.35, 0, 0), vertices=16)
+        add_cylinder("CraneBoomR", (W * 0.32, -L * 0.30, H * 0.86), 0.12, H * 0.82, steel, rotation=(-0.35, 0, 0), vertices=16)
+        add_box("CraneCrossBeam", (0, -L * 0.42, H * 1.18), (W * 0.76, 0.26, 0.26), beacon, bevel_width=0.03)
         # Side tire fenders
         for idx, fy in enumerate([-0.28, 0.0, 0.25]):
-            add_cylinder(f"FenderL_{idx}", (-W * 0.52, L * fy, H * 0.22), 0.26, 0.18, steel, rotation=(0, 1.5708, 0), vertices=14)
-            add_cylinder(f"FenderR_{idx}", (W * 0.52, L * fy, H * 0.22), 0.26, 0.18, steel, rotation=(0, 1.5708, 0), vertices=14)
+            add_cylinder(f"FenderL_{idx}", (-W * 0.52, L * fy, H * 0.38), 0.26, 0.18, steel, rotation=(0, 1.5708, 0), vertices=14)
+            add_cylinder(f"FenderR_{idx}", (W * 0.52, L * fy, H * 0.38), 0.26, 0.18, steel, rotation=(0, 1.5708, 0), vertices=14)
 
     elif aid == "traffic_ferry":
-        hull = make_pbr_material("FerryHull", (0.88, 0.92, 0.96), metallic=0.22, roughness=0.32)
-        trim = make_pbr_material("FerryTrim", (0.08, 0.48, 0.88), metallic=0.38, roughness=0.28)
-        windows = make_pbr_material("FerryWindows", (0.98, 0.86, 0.42), metallic=0.1, roughness=0.15, emission_color=(0.98, 0.86, 0.42), emission_strength=5.5)
+        hull = make_pbr_material("FerryHull", (0.20, 0.28, 0.38), metallic=0.35, roughness=0.32)
+        trim = make_pbr_material("FerryTrim", (0.08, 0.46, 0.82), metallic=0.45, roughness=0.28)
+        windows = make_pbr_material("FerryWindows", (0.98, 0.78, 0.32), metallic=0.1, roughness=0.2, emission_color=(0.98, 0.78, 0.32), emission_strength=2.2)
 
-        build_ribbed_hull("Ferry", L, W, H * 0.42, hull, trim, windows, hull)
-        add_box("LowerCabin", (0, -L * 0.02, H * 0.58), (W * 0.82, L * 0.72, H * 0.34), hull, bevel_width=0.06)
-        add_box("LowerWindows", (0, -L * 0.02, H * 0.62), (W * 0.85, L * 0.66, H * 0.14), windows, bevel_width=0.02)
-        add_box("UpperObservationDeck", (0, -L * 0.06, H * 0.86), (W * 0.64, L * 0.48, H * 0.26), trim, bevel_width=0.05)
-        add_box("UpperWindows", (0, -L * 0.05, H * 0.88), (W * 0.67, L * 0.42, H * 0.12), windows, bevel_width=0.02)
+        build_ribbed_hull("Ferry", L, W, H * 0.48, hull, trim, windows, hull)
+        add_box("LowerCabin", (0, -L * 0.02, H * 0.64), (W * 0.82, L * 0.72, H * 0.34), hull, bevel_width=0.06)
+        add_box("LowerWindows", (0, -L * 0.02, H * 0.68), (W * 0.85, L * 0.66, H * 0.14), windows, bevel_width=0.02)
+        add_box("UpperObservationDeck", (0, -L * 0.06, H * 0.92), (W * 0.64, L * 0.48, H * 0.26), trim, bevel_width=0.05)
+        add_box("UpperWindows", (0, -L * 0.05, H * 0.94), (W * 0.67, L * 0.42, H * 0.12), windows, bevel_width=0.02)
 
     elif aid == "police_interceptor":
-        hull = make_pbr_material("PoliceHull", (0.10, 0.15, 0.24), metallic=0.52, roughness=0.24)
-        stripe = make_pbr_material("PoliceWhite", (0.94, 0.96, 0.99), metallic=0.2, roughness=0.28)
-        siren_r = make_pbr_material("SirenRed", (1.0, 0.08, 0.18), emission_color=(1.0, 0.08, 0.18), emission_strength=8.0)
-        siren_b = make_pbr_material("SirenBlue", (0.05, 0.52, 1.0), emission_color=(0.05, 0.52, 1.0), emission_strength=8.0)
+        hull = make_pbr_material("PoliceHull", (0.06, 0.09, 0.16), metallic=0.58, roughness=0.24)
+        stripe = make_pbr_material("PoliceWhite", (0.32, 0.38, 0.46), metallic=0.28, roughness=0.32)
+        siren_r = make_pbr_material("SirenRed", (1.0, 0.08, 0.18), emission_color=(1.0, 0.08, 0.18), emission_strength=3.2)
+        siren_b = make_pbr_material("SirenBlue", (0.05, 0.56, 1.0), emission_color=(0.05, 0.56, 1.0), emission_strength=3.2)
 
-        build_ribbed_hull("PoliceInterceptor", L, W, H * 0.54, hull, stripe, siren_b, siren_r)
-        add_box("InterceptorCabin", (0, -L * 0.04, H * 0.66), (W * 0.62, L * 0.42, H * 0.42), stripe, bevel_width=0.05)
-        add_box("LightbarMast", (0, -L * 0.08, H * 0.96), (W * 0.52, 0.24, 0.18), hull, bevel_width=0.02)
-        add_box("SirenLampRed", (-W * 0.22, -L * 0.08, H * 1.06), (0.46, 0.28, 0.18), siren_r, bevel_width=0.02)
-        add_box("SirenLampBlue", (W * 0.22, -L * 0.08, H * 1.06), (0.46, 0.28, 0.18), siren_b, bevel_width=0.02)
-        add_cylinder("BullBar", (0, L * 0.46, H * 0.42), 0.10, W * 0.65, stripe, rotation=(0, 1.5708, 0), vertices=14)
+        build_ribbed_hull("PoliceInterceptor", L, W, H * 0.62, hull, stripe, siren_b, siren_r)
+        add_box("InterceptorCabin", (0, -L * 0.04, H * 0.74), (W * 0.62, L * 0.42, H * 0.42), stripe, bevel_width=0.05)
+        add_box("LightbarMast", (0, -L * 0.08, H * 1.04), (W * 0.52, 0.24, 0.18), hull, bevel_width=0.02)
+        add_box("SirenLampRed", (-W * 0.22, -L * 0.08, H * 1.14), (0.46, 0.28, 0.18), siren_r, bevel_width=0.02)
+        add_box("SirenLampBlue", (W * 0.22, -L * 0.08, H * 1.14), (0.46, 0.28, 0.18), siren_b, bevel_width=0.02)
+        add_cylinder("BullBar", (0, L * 0.46, H * 0.52), 0.10, W * 0.65, stripe, rotation=(0, 1.5708, 0), vertices=14)
 
     elif aid == "building_akari_neon":
-        wall = make_pbr_material("AkariFacade", (0.16, 0.22, 0.32), metallic=0.32, roughness=0.45)
-        window_warm = make_pbr_material("WindowGrid", (0.95, 0.78, 0.42), emission_color=(0.95, 0.78, 0.42), emission_strength=3.8)
-        sign_c = make_pbr_material("SignCyan", (0.0, 0.94, 1.0), emission_color=(0.0, 0.94, 1.0), emission_strength=6.5)
-        sign_m = make_pbr_material("SignMagenta", (1.0, 0.16, 0.64), emission_color=(1.0, 0.16, 0.64), emission_strength=6.8)
+        wall = make_pbr_material("AkariFacade", (0.06, 0.09, 0.15), metallic=0.42, roughness=0.48)
+        window_warm = make_pbr_material("WindowGrid", (0.98, 0.74, 0.32), emission_color=(0.98, 0.74, 0.32), emission_strength=1.8)
+        sign_c = make_pbr_material("SignCyan", (0.0, 0.92, 1.0), emission_color=(0.0, 0.92, 1.0), emission_strength=2.8)
+        sign_m = make_pbr_material("SignMagenta", (1.0, 0.14, 0.62), emission_color=(1.0, 0.14, 0.62), emission_strength=2.8)
+
+        # Waterfront Seawall Quay Island Base & Illuminated Canal Promenade
+        add_box("SeawallQuayFoundation", (0, 0, 1.1), (L * 1.42, W * 1.42, 3.2), wall, bevel_width=0.18)
+        add_box("QuayNeonEdge", (0, 0, 2.35), (L * 1.45, W * 1.45, 0.28), sign_c, bevel_width=0.03)
 
         # Tiered Japanese waterfront commercial tower
-        add_box("PodiumBase", (0, 0, H * 0.12), (L * 1.04, W * 1.04, H * 0.24), wall, bevel_width=0.14)
-        add_box("MidTower", (0, 0, H * 0.50), (L * 0.88, W * 0.88, H * 0.56), wall, bevel_width=0.14)
-        add_box("Penthouse", (0, 0, H * 0.88), (L * 0.68, W * 0.68, H * 0.24), wall, bevel_width=0.12)
+        add_box("PodiumBase", (0, 0, H * 0.14), (L * 1.04, W * 1.04, H * 0.24), wall, bevel_width=0.14)
+        add_box("MidTower", (0, 0, H * 0.52), (L * 0.88, W * 0.88, H * 0.56), wall, bevel_width=0.14)
+        add_box("Penthouse", (0, 0, H * 0.89), (L * 0.68, W * 0.68, H * 0.24), wall, bevel_width=0.12)
 
         # Horizontal illuminated window bands
         for i in range(6):
-            wz = H * (0.16 + i * 0.12)
+            wz = H * (0.18 + i * 0.12)
             scale_xy = 0.90 if i < 5 else 0.70
             add_box(f"WindowBand_{i}", (0, 0, wz), (L * scale_xy, W * scale_xy, 0.65), window_warm, bevel_width=0.02)
 
         # Vertical Dotonbori-style projecting neon signs
-        add_box("NeonBillboardCyan", (L * 0.48, W * 0.24, H * 0.52), (0.55, 2.4, H * 0.52), sign_c, bevel_width=0.04)
-        add_box("NeonBillboardMagenta", (-L * 0.48, -W * 0.22, H * 0.44), (0.55, 2.2, H * 0.46), sign_m, bevel_width=0.04)
-        add_box("NeonFrontSign", (0, -W * 0.49, H * 0.36), (L * 0.52, 0.55, H * 0.28), sign_m, bevel_width=0.04)
+        add_box("NeonBillboardCyan", (L * 0.48, W * 0.24, H * 0.54), (0.55, 2.4, H * 0.52), sign_c, bevel_width=0.04)
+        add_box("NeonBillboardMagenta", (-L * 0.48, -W * 0.22, H * 0.46), (0.55, 2.2, H * 0.46), sign_m, bevel_width=0.04)
+        add_box("NeonFrontSign", (0, -W * 0.49, H * 0.38), (L * 0.52, 0.55, H * 0.28), sign_m, bevel_width=0.04)
         add_box("RoofCrownSign", (0, 0, H * 1.04), (L * 0.62, 0.8, 3.6), sign_c, bevel_width=0.05)
         add_cylinder("RoofAntenna", (L * 0.18, W * 0.18, H * 1.12), 0.22, 6.5, sign_m, vertices=12)
 
     elif aid == "crane_kogyo":
-        steel = make_pbr_material("CraneOrange", (0.92, 0.32, 0.08), metallic=0.55, roughness=0.35)
+        steel = make_pbr_material("CraneOrange", (0.94, 0.34, 0.08), metallic=0.58, roughness=0.32)
         dark = make_pbr_material("CraneCharcoal", (0.20, 0.25, 0.32), metallic=0.65, roughness=0.38)
-        warn = make_pbr_material("CraneBeacon", (1.0, 0.68, 0.05), emission_color=(1.0, 0.68, 0.05), emission_strength=6.5)
+        warn = make_pbr_material("CraneBeacon", (1.0, 0.68, 0.05), emission_color=(1.0, 0.68, 0.05), emission_strength=7.0)
+
+        # Industrial Container Terminal Pier Deck & Stacked Container Yard
+        add_box("TerminalPierDeck", (0, 0, 1.0), (L * 0.96, W * 0.96, 2.8), dark, bevel_width=0.16)
+        add_box("ContainerStackA", (-L * 0.14, W * 0.12, 3.6), (6.2, 2.6, 2.6), steel, bevel_width=0.06)
+        add_box("ContainerStackB", (L * 0.16, -W * 0.08, 3.6), (6.2, 2.6, 2.6), warn, bevel_width=0.06)
 
         # 4 Heavy Portal Legs + Cross Bracing
         for sx in (-1, 1):

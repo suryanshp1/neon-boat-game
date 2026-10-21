@@ -36,10 +36,31 @@ describe('Subsystem 4: Missions, Economy, Telemetry & EN/JA Localisation', () =>
     expect(mods.accelerationMultiplier).toBeLessThan(1.0); // Trade-off axis verified
   });
 
-  it('has 100% key parity between English (en) and Japanese (ja) locales', () => {
+  it('has 100% key parity between English (en) and Japanese (ja) locales including all HUD controls', () => {
     const enKeys = Object.keys(LOCALES.en).sort();
     const jaKeys = Object.keys(LOCALES.ja).sort();
     expect(enKeys).toEqual(jaKeys);
     expect(t('hud.heat.clear', 'ja')).not.toBe('hud.heat.clear');
+    expect(t('hud.btn.contracts', 'en')).toContain('CONTRACTS');
+    expect(t('hud.btn.contracts', 'ja')).not.toBe('hud.btn.contracts');
+    expect(t('hud.btn.shipyard', 'ja')).not.toBe('hud.btn.shipyard');
+  });
+
+  it('emits lifecycle callbacks on mission stage advance and contract completion', () => {
+    const telemetry = new TelemetryTracker();
+    const economy = new EconomyManager(telemetry);
+    const events: string[] = [];
+    const manager = new MissionManager(economy, telemetry, {
+      onStageComplete: (m, idx) => events.push(`stage:${m.id}:${idx}`),
+      onMissionComplete: (m) => events.push(`complete:${m.id}`),
+    });
+
+    const firstMission = MISSIONS[0];
+    manager.startMission(firstMission.id);
+    for (let i = 0; i < firstMission.stages.length; i++) {
+      manager.completeCurrentStage();
+    }
+    expect(events).toContain(`stage:${firstMission.id}:0`);
+    expect(events).toContain(`complete:${firstMission.id}`);
   });
 });

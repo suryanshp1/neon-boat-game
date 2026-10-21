@@ -34,6 +34,45 @@ describe('Subsystem 2: Analytic Water & 60Hz Rapier Boat Dynamics', () => {
     const speedState = speed.getState();
     expect(skiffState.speedMps).toBeGreaterThan(5);
     expect(speedState.speedMps).toBeGreaterThan(skiffState.speedMps);
-    expect(Math.abs(skiffState.position.y)).toBeLessThan(3.0);
+    expect(skiffState.position.y).toBeGreaterThan(-0.12);
+    expect(skiffState.position.y).toBeLessThan(0.85);
+  });
+
+  it('keeps all 3 boat archetypes upright and floating on the waterline without capsizing or sinking', () => {
+    for (const spec of Object.values(BOAT_ARCHETYPES)) {
+      const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+      const boat = new BoatDynamics(world, spec, { x: 0, y: 0.6, z: 0 });
+
+      for (let i = 0; i < 600; i++) {
+        const steer = i > 200 && i < 400 ? 0.85 : 0;
+        const throttle = i > 100 ? 1.0 : 0;
+        boat.step(1 / 60, { throttle, steer, boost: i > 450, drift: false }, i / 60, 'clear');
+        world.step();
+      }
+
+      const st = boat.getState();
+      // Compute world up Y component from quaternion: 1 - 2*(x^2 + z^2)
+      const upY = 1 - 2 * (st.rotation.x * st.rotation.x + st.rotation.z * st.rotation.z);
+      expect(upY).toBeGreaterThan(0.85);
+      expect(st.position.y).toBeGreaterThan(-0.12);
+      expect(st.position.y).toBeLessThan(0.85);
+    }
+  });
+
+  it('resolves physical circle collisions against structures/vessels and applies impact hull damage', () => {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    const boat = new BoatDynamics(world, BOAT_ARCHETYPES.kuro_skiff, { x: 0, y: 0.3, z: 0 });
+
+    // Accelerate forward toward an obstacle at (0, -8)
+    for (let i = 0; i < 60; i++) {
+      boat.step(1 / 60, { throttle: 1, steer: 0, boost: true, drift: false }, i / 60, 'clear');
+      world.step();
+    }
+    const beforeState = boat.getState();
+    const impact = boat.resolveCircleCollision(beforeState.position.x, beforeState.position.z - 2.0, 4.0);
+    const afterState = boat.getState();
+
+    expect(impact).toBeGreaterThan(2.0);
+    expect(afterState.hullHp).toBeLessThan(beforeState.hullHp);
   });
 });
