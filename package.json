@@ -1,0 +1,27 @@
+{
+  "name": "neon-tides",
+  "version": "1.0.0",
+  "description": "Neon Tides — A Web-First Japanese Open-World Boating Action Game",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "assets:generate": "BLENDER_EXECUTABLE=/Users/surajpandey/Documents/boat-race/tools/Blender.app/Contents/MacOS/Blender python3 scripts/generate-assets-mcp.py && npx tsx scripts/validate-assets.ts",
+    "assets:validate": "npx tsx scripts/validate-assets.ts"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.14.0",
+    "@gltf-transform/core": "^4.0.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/three": "^0.170.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.0"
+  }
+}

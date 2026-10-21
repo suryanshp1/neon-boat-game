@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-10-21T16:00:38.889Z",
+  "generator": "sandraschi/blender-mcp headless GLB factory + @gltf-transform/core",
+  "passed": true,
+  "totalAssets": 10,
+  "results": [
+    {
+      "asset_id": "boat_skiff",
+      "category": "hero_boat",
+      "exists": true,
+      "triangles": 540,
+      "maxTriangles": 8000,
+      "materials": 3,
+      "maxMaterials": 4,
+      "byteSize": 39600,
+      "passed": true
+    },
+    {
+      "asset_id": "boat_speedboat",
+      "category": "hero_boat",
+      "exists": true,
+      "triangles": 552,
+      "maxTriangles": 12000,
+      "materials": 3,
+      "maxMaterials": 4,
+      "byteSize": 39480,
+      "passed": true
+    },
+    {
+      "asset_id": "boat_workboat",
+      "category": "hero_boat",
+      "exists": true,
+      "triangles": 540,
+      "maxTriangles": 12000,
+      "materials": 3,
+      "maxMaterials": 4,
+      "byteSize": 39612,
+      "passed": true
+    },
+    {
+      "asset_id": "traffic_ferry",
+      "category": "traffic_boat",
+      "exists": true,
+      "triangles": 432,
+      "maxTriangles": 6000,
+      "materials": 3,
+      "maxMaterials": 3,
+      "byteSize": 31988,
+      "passed": true
+    },
+    {
+      "asset_id": "police_interceptor",
+      "category": "traffic_boat",
+      "exists": true,
+      "triangles": 540,
+      "maxTriangles": 6000,
+      "materials": 4,
+      "maxMaterials": 4,
+      "byteSize": 40068,
+      "passed": true
+    },
+    {
+      "asset_id": "building_akari_neon",
+      "category": "building",
+      "exists": true,
+      "triangles": 432,
+      "maxTriangles": 5000,
+      "materials": 3,
+      "maxMaterials": 4,
+      "byteSize": 33088,
+      "passed": true
+    },
+    {
+      "asset_id": "crane_kogyo",
+      "category": "landmark",
+      "exists": true,
+      "triangles": 756,
+      "maxTriangles": 8000,
+      "materials": 3,
+      "maxMaterials": 3,
+      "byteSize": 55292,
+      "passed": true
+    },
+    {
+      "asset_id": "torii_gate",
+      "category": "landmark",
+      "exists": true,
+      "triangles": 552,
+      "maxTriangles": 6000,
+      "materials": 3,
+      "maxMaterials": 3,
+      "byteSize": 40280,
+      "passed": true
+    },
+    {
+      "asset_id": "bridge_span",
+      "category": "landmark",
+      "exists": true,
+      "triangles": 540,
+      "maxTriangles": 8000,
+      "materials": 3,
+      "maxMaterials": 3,
+      "byteSize": 41444,
+      "passed": true
+    },
+    {
+      "asset_id": "buoy_marker",
+      "category": "prop",
+      "exists": true,
+      "triangles": 148,
+      "maxTriangles": 1200,
+      "materials": 3,
+      "maxMaterials": 3,
+      "byteSize": 11740,
+      "passed": true
+    }
+  ]
+}
